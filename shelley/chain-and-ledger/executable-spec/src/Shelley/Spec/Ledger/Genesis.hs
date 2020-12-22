@@ -30,7 +30,7 @@ where
 import Cardano.Binary (FromCBOR (..), ToCBOR (..), encodeListLen)
 import qualified Cardano.Crypto.Hash.Class as Crypto
 import Cardano.Crypto.KES.Class (totalPeriodsKES)
-import Cardano.Ledger.Constraints (UsesValue)
+import Cardano.Ledger.Constraints (UsesTxOut (..), UsesValue)
 import Cardano.Ledger.Crypto (HASH, KES)
 import qualified Cardano.Ledger.Crypto as CC (Crypto)
 import Cardano.Ledger.Era
@@ -67,7 +67,7 @@ import Shelley.Spec.Ledger.Serialization
     utcTimeToCBOR,
   )
 import Shelley.Spec.Ledger.StabilityWindow
-import Shelley.Spec.Ledger.TxBody (PoolParams (..), TxId (..), TxIn (..), TxOut (..))
+import Shelley.Spec.Ledger.TxBody (PoolParams (..), TxId (..), TxIn (..))
 import Shelley.Spec.Ledger.UTxO
 
 -- | Genesis Shelley staking configuration.
@@ -287,7 +287,8 @@ instance Era era => FromCBOR (ShelleyGenesis era) where
 -------------------------------------------------------------------------------}
 
 genesisUTxO ::
-  (Era era, UsesValue era) =>
+  forall era.
+  (Era era, UsesValue era, UsesTxOut era) =>
   ShelleyGenesis era ->
   UTxO era
 genesisUTxO genesis =
@@ -296,7 +297,7 @@ genesisUTxO genesis =
       [ (txIn, txOut)
         | (addr, amount) <- Map.toList (sgInitialFunds genesis),
           let txIn = initialFundsPseudoTxIn addr
-              txOut = TxOut addr (Val.inject amount)
+              txOut = makeTxOut (Proxy @era) addr (Val.inject amount)
       ]
 
 -- | Compute the 'TxIn' of the initial UTxO pseudo-transaction corresponding

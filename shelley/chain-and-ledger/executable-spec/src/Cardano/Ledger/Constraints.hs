@@ -1,7 +1,9 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -10,6 +12,7 @@ module Cardano.Ledger.Constraints
     ChainData,
     SerialisableData,
     UsesTxBody,
+    UsesTxOut (..),
     UsesValue,
     UsesScript,
     UsesAuxiliary,
@@ -27,11 +30,14 @@ import Cardano.Ledger.Core
     SerialisableData,
   )
 import qualified Cardano.Ledger.Core as Core
-import Cardano.Ledger.Era (Era)
+import Cardano.Ledger.Era (Crypto, Era)
 import Cardano.Ledger.Torsor (Torsor (..))
 import Cardano.Ledger.Val (DecodeMint, DecodeNonNegative, EncodeMint, Val)
 import Data.Kind (Constraint, Type)
+import Data.Proxy (Proxy)
+import GHC.Records (HasField)
 import NoThunks.Class (NoThunks (..))
+import Shelley.Spec.Ledger.Address (Addr)
 import Shelley.Spec.Ledger.Hashing
   ( EraIndependentTxBody,
     HashAnnotated (..),
@@ -109,6 +115,19 @@ type UsesAuxiliary era =
     ToCBOR (Core.AuxiliaryData era),
     FromCBOR (Annotator (Core.AuxiliaryData era))
   )
+
+class
+  ( Era era,
+    Show (Core.TxOut era),
+    Eq (Core.TxOut era),
+    ToCBOR (Core.TxOut era),
+    FromCBOR (Core.TxOut era),
+    HasField "address" (Core.TxOut era) (Addr (Crypto era)),
+    HasField "value" (Core.TxOut era) (Core.Value era)
+  ) =>
+  UsesTxOut era
+  where
+  makeTxOut :: Proxy era -> Addr (Crypto era) -> Core.Value era -> Core.TxOut era
 
 -- | Apply 'c' to all the types transitively involved with Value when
 -- (Core.Value era) is an instance of Compactible and Torsor

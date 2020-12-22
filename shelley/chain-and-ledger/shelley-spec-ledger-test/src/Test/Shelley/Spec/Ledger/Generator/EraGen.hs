@@ -34,7 +34,7 @@ import Shelley.Spec.Ledger.Tx
   ( TxId (TxId),
     ValidateScript (..),
   )
-import Shelley.Spec.Ledger.TxBody (DCert, TxIn, TxOut, Wdrl)
+import Shelley.Spec.Ledger.TxBody (DCert, TxIn, Wdrl)
 import Shelley.Spec.Ledger.UTxO (UTxO)
 import Test.QuickCheck (Gen)
 import Test.Shelley.Spec.Ledger.Generator.Constants (Constants (..))
@@ -47,7 +47,7 @@ import Test.Shelley.Spec.Ledger.Generator.Presets (someKeyPairs)
 import Test.Shelley.Spec.Ledger.Generator.ScriptClass (ScriptClass, someScripts)
 import Test.Shelley.Spec.Ledger.Utils (Split (..))
 
-import Cardano.Ledger.Constraints(UsesValue,UsesScript)
+import Cardano.Ledger.Constraints(UsesTxOut, UsesScript)
 
 {------------------------------------------------------------------------------
  An EraGen instance makes it possible to run the Shelley property tests
@@ -69,7 +69,7 @@ class
     GenEnv era ->
     SlotNo ->
     Set (TxIn (Crypto era)) ->
-    StrictSeq (TxOut era) ->
+    StrictSeq (Core.TxOut era) ->
     StrictSeq (DCert (Crypto era)) ->
     Wdrl (Crypto era) ->
     Coin ->
@@ -85,7 +85,7 @@ class
     Core.TxBody era ->
     Coin ->
     Set (TxIn (Crypto era)) ->
-    StrictSeq (TxOut era) ->
+    StrictSeq (Core.TxOut era) ->
     Core.TxBody era
 
 {------------------------------------------------------------------------------
@@ -94,14 +94,14 @@ class
 
 genUtxo0 ::
   forall era.
-  (EraGen era, UsesValue era) =>
+  (EraGen era, UsesTxOut era) =>
   GenEnv era ->
   Gen (UTxO era)
 genUtxo0 ge@(GenEnv _ c@Constants {minGenesisUTxOouts, maxGenesisUTxOouts}) = do
   genesisKeys <- someKeyPairs c minGenesisUTxOouts maxGenesisUTxOouts
   genesisScripts <- someScripts @era c minGenesisUTxOouts maxGenesisUTxOouts
   outs <-
-    genTxOut
+    (genTxOut @era)
       (genGenesisValue @era ge)
       (fmap (toAddr Testnet) genesisKeys ++ fmap (scriptsToAddr' Testnet) genesisScripts)
   return (genesisCoins genesisId outs)

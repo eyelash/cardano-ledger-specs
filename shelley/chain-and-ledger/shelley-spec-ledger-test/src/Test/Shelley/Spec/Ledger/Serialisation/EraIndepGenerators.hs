@@ -139,7 +139,13 @@ import Test.Shelley.Spec.Ledger.Serialisation.Generators.Bootstrap
   )
 import Test.Tasty.QuickCheck (Gen, choose, elements)
 
-import Cardano.Ledger.Constraints(UsesValue,UsesScript,UsesTxBody,UsesAuxiliary)
+import Cardano.Ledger.Constraints
+  ( UsesValue,
+    UsesScript,
+    UsesTxBody,
+    UsesTxOut,
+    UsesAuxiliary,
+  )
 import Test.Shelley.Spec.Ledger.Generator.ScriptClass(ScriptClass)
 -- =======================================================
 
@@ -375,7 +381,11 @@ instance CC.Crypto crypto => Arbitrary (STS.PrtclState crypto) where
   shrink = genericShrink
 
 instance
-  (UsesValue era, Mock (Crypto era), Arbitrary (Core.Value era)) =>
+  ( UsesTxOut era,
+    UsesValue era,
+    Mock (Crypto era),
+    Arbitrary (Core.TxOut era)
+  ) =>
   Arbitrary (UTxO era)
   where
   arbitrary = genericArbitraryU
@@ -444,21 +454,35 @@ instance CC.Crypto crypto => Arbitrary (DPState crypto) where
   shrink = genericShrink
 
 instance
-  (UsesValue era, Mock (Crypto era), Arbitrary (Core.Value era)) =>
+  ( UsesTxOut era,
+    UsesValue era,
+    Mock (Crypto era),
+    Arbitrary (Core.TxOut era)
+  ) =>
   Arbitrary (UTxOState era)
   where
   arbitrary = genericArbitraryU
   shrink = genericShrink
 
 instance
-  (UsesValue era, Mock (Crypto era), Arbitrary (Core.Value era)) =>
+  ( UsesTxOut era,
+    UsesValue era,
+    Mock (Crypto era),
+    Arbitrary (Core.TxOut era)
+  ) =>
   Arbitrary (LedgerState era)
   where
   arbitrary = genericArbitraryU
   shrink = genericShrink
 
 instance
-  (UsesValue era, Mock (Crypto era), Arbitrary (Core.Value era), EraGen era) =>
+  ( UsesTxOut era,
+    UsesValue era,
+    Mock (Crypto era),
+    Arbitrary (Core.TxOut era),
+    Arbitrary (Core.Value era),
+    EraGen era
+  ) =>
   Arbitrary (NewEpochState era)
   where
   arbitrary = genericArbitraryU
@@ -475,7 +499,13 @@ instance CC.Crypto crypto => Arbitrary (PoolDistr crypto) where
       genVal = IndividualPoolStake <$> arbitrary <*> genHash
 
 instance
-  (UsesValue era, Mock (Crypto era), Arbitrary (Core.Value era), EraGen era) =>
+  ( UsesTxOut era,
+    UsesValue era,
+    Mock (Crypto era),
+    Arbitrary (Core.TxOut era),
+    Arbitrary (Core.Value era),
+    EraGen era
+  ) =>
   Arbitrary (EpochState era)
   where
   arbitrary =

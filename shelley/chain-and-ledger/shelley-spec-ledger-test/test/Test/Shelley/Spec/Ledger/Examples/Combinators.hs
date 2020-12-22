@@ -97,11 +97,11 @@ import Shelley.Spec.Ledger.LedgerState
   )
 import Shelley.Spec.Ledger.PParams (PParams, PParams' (..), ProposedPPUpdates)
 import Shelley.Spec.Ledger.STS.Chain (ChainState (..))
-import Shelley.Spec.Ledger.Tx (TxIn, TxOut)
+import Shelley.Spec.Ledger.Tx (TxIn)
 import Shelley.Spec.Ledger.TxBody (MIRPot (..), PoolParams (..), RewardAcnt (..))
 import Shelley.Spec.Ledger.UTxO (txins, txouts)
 import Test.Shelley.Spec.Ledger.Utils (epochFromSlotNo, getBlockNonce)
-import Cardano.Ledger.Constraints(UsesTxBody,UsesValue)
+import Cardano.Ledger.Constraints (UsesTxBody, UsesTxOut)
 
 -- ======================================================
 
@@ -178,9 +178,9 @@ feesAndDeposits newFees depositChange cs = cs {chainNes = nes'}
 newUTxO ::
   forall era.
   ( UsesTxBody era,
-    UsesValue era,
+    UsesTxOut era,
     HasField "inputs" (Core.TxBody era) (Set (TxIn (Crypto era))),
-    HasField "outputs" (Core.TxBody era) (StrictSeq (TxOut era))
+    HasField "outputs" (Core.TxBody era) (StrictSeq (Core.TxOut era))
   ) =>
   Core.TxBody era ->
   ChainState era ->

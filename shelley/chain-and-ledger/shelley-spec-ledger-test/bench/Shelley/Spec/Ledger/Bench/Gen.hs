@@ -45,12 +45,12 @@ import Test.Shelley.Spec.Ledger.Generator.Trace.Chain (mkGenesisChainState)
 import Test.Shelley.Spec.Ledger.Generator.Utxo (genTx)
 import Test.Shelley.Spec.Ledger.Serialisation.Generators ()
 import Test.Shelley.Spec.Ledger.Utils (ShelleyLedgerSTS, ShelleyTest)
-import Cardano.Ledger.Constraints (UsesValue)
+import Cardano.Ledger.Constraints (UsesTxOut, UsesValue)
 -- ===============================================================
 
 -- | Generate a genesis chain state given a UTxO size
 genChainState ::
-  (EraGen era, UsesValue era) =>
+  (EraGen era, UsesTxOut era, UsesValue era) =>
   Int ->
   GenEnv era ->
   IO (ChainState era)

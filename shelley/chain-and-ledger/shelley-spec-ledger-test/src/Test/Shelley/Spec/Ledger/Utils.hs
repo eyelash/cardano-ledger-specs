@@ -139,7 +139,7 @@ import Shelley.Spec.Ledger.STS.Utxo (UTXO, UtxoEnv)
 import Shelley.Spec.Ledger.STS.Utxow (UTXOW)
 import Shelley.Spec.Ledger.Scripts (MultiSig)
 import Shelley.Spec.Ledger.Slot (EpochNo, EpochSize (..), SlotNo)
-import Shelley.Spec.Ledger.Tx (Tx, TxBody)
+import Shelley.Spec.Ledger.Tx (Tx, TxBody, TxOut)
 import Test.Shelley.Spec.Ledger.ConcreteCryptoTypes (Mock)
 import Test.Tasty.HUnit
   ( Assertion,
@@ -150,10 +150,12 @@ import Cardano.Ledger.Constraints
 type ShelleyTest era =
   ( UsesTxBody era,
     UsesValue era,
+    UsesTxOut era,
     UsesScript era,
     UsesAuxiliary era,
     TxBody era ~ Core.TxBody era,
-    Core.Script era ~ MultiSig (Crypto era),
+    TxOut era ~ Core.TxOut era,
+    MultiSig (Crypto era) ~ Core.Script era,
     Split (Core.Value era)
   )
 

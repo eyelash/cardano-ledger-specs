@@ -19,7 +19,7 @@ module Shelley.Spec.Ledger.API.Validation
   )
 where
 
-import Cardano.Ledger.Constraints (UsesValue)
+import Cardano.Ledger.Constraints (UsesTxOut, UsesValue)
 import Cardano.Ledger.Core (AnnotatedData, ChainData, SerialisableData)
 import Cardano.Ledger.Era (Crypto, Era)
 import Cardano.Ledger.Shelley (ShelleyEra)
@@ -65,7 +65,7 @@ class
     SlotNo ->
     NewEpochState era
   default applyTick ::
-    (UsesValue era) =>
+    (UsesTxOut era, UsesValue era) =>
     Globals ->
     NewEpochState era ->
     SlotNo ->

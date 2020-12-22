@@ -33,7 +33,7 @@ module Shelley.Spec.Ledger.API.Protocol
 where
 
 import Cardano.Binary (FromCBOR (..), ToCBOR (..), encodeListLen)
-import Cardano.Ledger.Constraints (UsesValue)
+import Cardano.Ledger.Constraints (UsesTxOut, UsesValue)
 import Cardano.Ledger.Core (ChainData, SerialisableData)
 import qualified Cardano.Ledger.Crypto as CC (Crypto)
 import Cardano.Ledger.Era (Crypto)
@@ -116,7 +116,7 @@ class
     SlotNo ->
     m (LedgerView (Crypto era))
   default futureLedgerView ::
-    (UsesValue era, MonadError (FutureLedgerViewError era) m) =>
+    (UsesTxOut era, UsesValue era, MonadError (FutureLedgerViewError era) m) =>
     Globals ->
     NewEpochState era ->
     SlotNo ->
@@ -219,7 +219,8 @@ deriving stock instance
 --   appropriate to that slot.
 futureView ::
   forall era m.
-  ( UsesValue era,
+  ( UsesTxOut era,
+    UsesValue era,
     MonadError (FutureLedgerViewError era) m
   ) =>
   Globals ->

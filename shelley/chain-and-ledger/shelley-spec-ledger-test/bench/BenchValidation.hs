@@ -27,6 +27,7 @@ module BenchValidation
 where
 
 import Cardano.Ledger.AuxiliaryData (ValidateAuxiliaryData)
+import Cardano.Ledger.Constraints (TransValue)
 import qualified Cardano.Ledger.Crypto as CryptoClass
 import Cardano.Ledger.Era (Era (..))
 import Cardano.Prelude (NFData (rnf))
@@ -59,6 +60,7 @@ import Shelley.Spec.Ledger.LedgerState
 import Shelley.Spec.Ledger.STS.Chain (ChainState (..))
 import Shelley.Spec.Ledger.STS.Prtcl (PrtclState (..))
 import Shelley.Spec.Ledger.STS.Tickn (TicknState (..))
+import Shelley.Spec.Ledger.TxBody (TransTxId, TransTxBody)
 import Test.Shelley.Spec.Ledger.ConcreteCryptoTypes (Mock)
 import Test.Shelley.Spec.Ledger.Generator.EraGen (EraGen)
 import Test.Shelley.Spec.Ledger.Generator.Presets (genEnv)
@@ -115,7 +117,9 @@ benchValidate (ValidateInput globals state block) =
 
 applyBlock ::
   forall era.
-  ( Era era,
+  ( TransTxId Show era,
+    TransTxBody NFData era,
+    TransValue NFData era,
     API.ApplyBlock era
   ) =>
   ValidateInput era ->

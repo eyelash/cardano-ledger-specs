@@ -21,7 +21,8 @@ module Shelley.Spec.Ledger.API.Wallet
 where
 
 import qualified Cardano.Crypto.VRF as VRF
-import Cardano.Ledger.Constraints (UsesValue)
+import Cardano.Ledger.Constraints (UsesTxOut, UsesValue)
+import qualified Cardano.Ledger.Core as Core
 import Cardano.Ledger.Crypto (VRF)
 import Cardano.Ledger.Era (Crypto, Era)
 import Cardano.Slotting.EpochInfo (epochInfoRange)
@@ -37,6 +38,7 @@ import Data.Maybe (fromMaybe)
 import Data.Ratio ((%))
 import Data.Set (Set)
 import qualified Data.Set as Set
+import GHC.Records (HasField, getField)
 import Shelley.Spec.Ledger.API.Protocol (ChainDepState (..))
 import Shelley.Spec.Ledger.Address (Addr (..))
 import Shelley.Spec.Ledger.BaseTypes (Globals (..), Seed)
@@ -72,7 +74,7 @@ import Shelley.Spec.Ledger.Rewards
 import Shelley.Spec.Ledger.STS.NewEpoch (calculatePoolDistr)
 import Shelley.Spec.Ledger.STS.Tickn (TicknState (..))
 import Shelley.Spec.Ledger.Slot (epochInfoSize)
-import Shelley.Spec.Ledger.TxBody (PoolParams (..), TxOut (..))
+import Shelley.Spec.Ledger.TxBody (PoolParams (..))
 import Shelley.Spec.Ledger.UTxO (UTxO (..))
 
 -- | Get pool sizes, but in terms of total stake
@@ -85,7 +87,7 @@ import Shelley.Spec.Ledger.UTxO (UTxO (..))
 -- This is not based on any snapshot, but uses the current ledger state.
 poolsByTotalStakeFraction ::
   forall era.
-  UsesValue era =>
+  (UsesTxOut era, UsesValue era) =>
   Globals ->
   NewEpochState era ->
   PoolDistr (Crypto era)
@@ -116,7 +118,7 @@ getTotalStake globals ss =
 --
 -- This is not based on any snapshot, but uses the current ledger state.
 getNonMyopicMemberRewards ::
-  UsesValue era =>
+  (UsesTxOut era, UsesValue era) =>
   Globals ->
   NewEpochState era ->
   Set (Either Coin (Credential 'Staking (Crypto era))) ->
@@ -176,7 +178,8 @@ getNonMyopicMemberRewards globals ss creds =
 -- When ranking pools, and reporting their saturation level, in the wallet, we
 -- do not want to use one of the regular snapshots, but rather the most recent
 -- ledger state.
-currentSnapshot :: UsesValue era => NewEpochState era -> EB.SnapShot (Crypto era)
+currentSnapshot ::
+  (UsesTxOut era, UsesValue era) => NewEpochState era -> EB.SnapShot (Crypto era)
 currentSnapshot ss =
   stakeDistr utxo dstate pstate
   where
@@ -193,11 +196,15 @@ getUTxO = _utxo . _utxoState . esLState . nesEs
 
 -- | Get the UTxO filtered by address.
 getFilteredUTxO ::
+  HasField "address" (Core.TxOut era) (Addr (Crypto era)) =>
   NewEpochState era ->
   Set (Addr (Crypto era)) ->
   UTxO era
 getFilteredUTxO ss addrs =
-  UTxO $ Map.filter (\(TxOutCompact addrSBS _) -> addrSBS `Set.member` addrSBSs) fullUTxO
+  UTxO $
+    Map.filter
+      (\out -> (compactAddr $ getField @"address" out) `Set.member` addrSBSs)
+      fullUTxO
   where
     UTxO fullUTxO = getUTxO ss
     -- Instead of decompacting each address in the huge UTxO, compact each

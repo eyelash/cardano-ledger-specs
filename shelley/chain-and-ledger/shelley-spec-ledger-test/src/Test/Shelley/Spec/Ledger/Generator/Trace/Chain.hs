@@ -70,7 +70,12 @@ import Test.Shelley.Spec.Ledger.Utils
     maxLLSupply,
     mkHash,
   )
-import Cardano.Ledger.Constraints(UsesTxBody,UsesValue,UsesAuxiliary)
+import Cardano.Ledger.Constraints
+  ( UsesTxBody,
+    UsesTxOut,
+    UsesValue,
+    UsesAuxiliary
+  )
 
 -- ======================================================
 
@@ -79,6 +84,7 @@ import Cardano.Ledger.Constraints(UsesTxBody,UsesValue,UsesAuxiliary)
 instance
   ( EraGen era,
     UsesTxBody era,
+    UsesTxOut era,
     UsesValue era,
     UsesAuxiliary era,
     Mock (Crypto era),
@@ -88,7 +94,7 @@ instance
     ShelleyChainSTS era,
     ValidateAuxiliaryData era,
     HasField "inputs" (Core.TxBody era) (Set (TxIn (Crypto era))),
-    HasField "outputs" (Core.TxBody era) (StrictSeq (TxOut era))
+    HasField "outputs" (Core.TxBody era) (StrictSeq (Core.TxOut era))
   ) =>
   HasTrace (CHAIN era) (GenEnv era)
   where
@@ -115,6 +121,7 @@ lastByronHeaderHash _ = HashHeader $ mkHash 0
 mkGenesisChainState ::
   forall era a.
   ( EraGen era,
+    UsesTxOut era,
     UsesValue era
   ) =>
   GenEnv era ->

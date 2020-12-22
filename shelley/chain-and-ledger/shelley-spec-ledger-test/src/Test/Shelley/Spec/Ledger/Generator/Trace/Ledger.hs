@@ -40,7 +40,7 @@ import Shelley.Spec.Ledger.STS.Ledger (LEDGER, LedgerEnv (..))
 import Shelley.Spec.Ledger.STS.Ledgers (LEDGERS, LedgersEnv (..))
 import Shelley.Spec.Ledger.Slot (SlotNo (..))
 import Shelley.Spec.Ledger.Tx (Tx)
-import Shelley.Spec.Ledger.TxBody (Ix, TxIn, TxOut)
+import Shelley.Spec.Ledger.TxBody (Ix, TxIn)
 import Test.QuickCheck (Gen)
 import Test.Shelley.Spec.Ledger.ConcreteCryptoTypes (Mock)
 import Test.Shelley.Spec.Ledger.Generator.Constants (Constants (..))
@@ -57,7 +57,12 @@ import Test.Shelley.Spec.Ledger.Utils
     applySTSTest,
     runShelleyBase,
   )
-import Cardano.Ledger.Constraints(UsesTxBody,UsesValue,UsesAuxiliary)
+import Cardano.Ledger.Constraints
+  ( UsesTxBody,
+    UsesTxOut,
+    UsesValue,
+    UsesAuxiliary
+  )
 
 -- ======================================================
 
@@ -73,13 +78,14 @@ genAccountState (Constants {minTreasury, maxTreasury, minReserves, maxReserves})
 instance
   ( EraGen era,
     UsesTxBody era,
+    UsesTxOut era,
     UsesValue era,
     UsesAuxiliary era,
     Mock (Crypto era),
     ValidateAuxiliaryData era,
     ShelleyLedgerSTS era,
     HasField "inputs" (Core.TxBody era) (Set (TxIn (Crypto era))),
-    HasField "outputs" (Core.TxBody era) (StrictSeq (TxOut era))
+    HasField "outputs" (Core.TxBody era) (StrictSeq (Core.TxOut era))
   ) =>
   TQC.HasTrace (LEDGER era) (GenEnv era)
   where
@@ -100,13 +106,14 @@ instance
   forall era.
   ( EraGen era,
     UsesTxBody era,
+    UsesTxOut era,
     UsesValue era,
     UsesAuxiliary era,
     Mock (Crypto era),
     ValidateAuxiliaryData era,
     ShelleyLedgerSTS era,
     HasField "inputs" (Core.TxBody era) (Set (TxIn (Crypto era))),
-    HasField "outputs" (Core.TxBody era) (StrictSeq (TxOut era))
+    HasField "outputs" (Core.TxBody era) (StrictSeq (Core.TxOut era))
   ) =>
   TQC.HasTrace (LEDGERS era) (GenEnv era)
   where
@@ -160,6 +167,7 @@ instance
 mkGenesisLedgerState ::
   forall a era.
   ( UsesValue era,
+    UsesTxOut era,
     EraGen era
   ) =>
   GenEnv era ->

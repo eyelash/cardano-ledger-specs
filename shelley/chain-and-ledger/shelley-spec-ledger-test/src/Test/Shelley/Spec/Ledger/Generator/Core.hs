@@ -49,6 +49,7 @@ module Test.Shelley.Spec.Ledger.Generator.Core
   )
 where
 
+import Data.Proxy (Proxy (..))
 import Cardano.Crypto.DSIGN.Class (DSIGNAlgorithm (..))
 import Cardano.Crypto.VRF (evalCertified)
 import qualified Cardano.Ledger.Core as Core
@@ -156,12 +157,10 @@ import Shelley.Spec.Ledger.Tx
   ( Tx,
     TxIn,
     pattern TxIn,
-    pattern TxOut,
   )
 import qualified Shelley.Spec.Ledger.Tx as Ledger
 import Shelley.Spec.Ledger.TxBody
   ( DCert,
-    TxOut,
     unWdrl,
   )
 import Shelley.Spec.Ledger.UTxO
@@ -195,8 +194,12 @@ import Test.Shelley.Spec.Ledger.Utils
     runShelleyBase,
     unsafeMkUnitInterval,
   )
-
-import Cardano.Ledger.Constraints(UsesTxBody,UsesValue,UsesScript,UsesAuxiliary)
+import Cardano.Ledger.Constraints
+  ( UsesTxBody,
+    UsesScript,
+    UsesAuxiliary,
+    UsesTxOut (..)
+  )
 
 -- ==================================================
 
@@ -420,13 +423,13 @@ pickStakeKey keys = vKey . snd <$> QC.elements keys
 -- to include certificates that require deposits.
 genTxOut ::
   forall era.
-  (UsesValue era) =>
+  UsesTxOut era =>
   Gen (Core.Value era) ->
   [Addr (Crypto era)] ->
-  Gen [TxOut era]
+  Gen [Core.TxOut era]
 genTxOut genEraVal addrs = do
   values <- replicateM (length addrs) genEraVal
-  return (uncurry TxOut <$> zip addrs values)
+  return (uncurry (makeTxOut (Proxy @ era)) <$> zip addrs values)
 
 -- | Generates a list of 'Coin' values of length between 'lower' and 'upper'
 -- and with values between 'minCoin' and 'maxCoin'.
@@ -663,7 +666,7 @@ genesisAccountState =
 genesisCoins ::
   (Era era) =>
   Ledger.TxId (Crypto era) ->
-  [TxOut era] ->
+  [Core.TxOut era] ->
   UTxO era
 genesisCoins genesisTxId outs =
   UTxO $
@@ -674,7 +677,7 @@ applyTxBody ::
   forall era.
   ( ShelleyTest era,
     HasField "inputs" (Core.TxBody era) (Set (TxIn (Crypto era))),
-    HasField "outputs" (Core.TxBody era) (StrictSeq (TxOut era)),
+    HasField "outputs" (Core.TxBody era) (StrictSeq (Core.TxOut era)),
     HasField "certs" (Core.TxBody era) (StrictSeq (DCert (Crypto era)))
   ) =>
   LedgerState era ->

@@ -32,7 +32,12 @@ import Cardano.Ledger.AuxiliaryData
   ( AuxiliaryDataHash,
     ValidateAuxiliaryData (..),
   )
-import Cardano.Ledger.Constraints (UsesAuxiliary, UsesScript, UsesTxBody, UsesValue)
+import Cardano.Ledger.Constraints
+  ( UsesAuxiliary,
+    UsesScript,
+    UsesTxBody,
+    UsesTxOut,
+  )
 import qualified Cardano.Ledger.Core as Core
 import qualified Cardano.Ledger.Crypto as CryptoClass
 import Cardano.Ledger.Era (Crypto, Era)
@@ -161,7 +166,8 @@ deriving stock instance
 
 instance
   ( CryptoClass.Crypto c,
-    DSignable c (Hash c EraIndependentTxBody)
+    DSignable c (Hash c EraIndependentTxBody),
+    UsesTxOut (ShelleyEra c)
   ) =>
   STS (UTXOW (ShelleyEra c))
   where
@@ -266,7 +272,7 @@ utxoWitnessed ::
   ( UsesTxBody era,
     UsesAuxiliary era,
     UsesScript era,
-    UsesValue era,
+    UsesTxOut era,
     ValidateScript era,
     ValidateAuxiliaryData era,
     STS (UTXOW era),
@@ -359,7 +365,7 @@ utxoWitnessed scriptsNeeded =
         TRC (UtxoEnv slot pp stakepools genDelegs, u, tx)
 
 instance
-  (CryptoClass.Crypto c) =>
+  (UsesTxOut (ShelleyEra c), CryptoClass.Crypto c) =>
   Embed (UTXO (ShelleyEra c)) (UTXOW (ShelleyEra c))
   where
   wrapFailed = UtxoFailure

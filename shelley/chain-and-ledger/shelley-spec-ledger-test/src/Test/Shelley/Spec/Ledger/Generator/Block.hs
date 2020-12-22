@@ -65,7 +65,13 @@ import Test.Shelley.Spec.Ledger.Utils
     slotFromEpoch,
     testGlobals,
   )
-import Cardano.Ledger.Constraints(UsesTxBody,UsesValue,UsesScript,UsesAuxiliary)
+import Cardano.Ledger.Constraints
+  ( UsesTxBody,
+    UsesTxOut,
+    UsesValue,
+    UsesScript,
+    UsesAuxiliary
+  )
 
 -- ======================================================
 
@@ -83,6 +89,7 @@ genBlock ::
   forall era.
   ( EraGen era,
     UsesTxBody era,
+    UsesTxOut era,
     UsesValue era,
     UsesAuxiliary era,
     Mock (Crypto era),
@@ -91,7 +98,7 @@ genBlock ::
     ValidateAuxiliaryData era,
     ShelleyLedgerSTS era,
     HasField "inputs" (Core.TxBody era) (Set (TxIn (Crypto era))),
-    HasField "outputs" (Core.TxBody era) (StrictSeq (TxOut era))
+    HasField "outputs" (Core.TxBody era) (StrictSeq (Core.TxOut era))
   ) =>
   GenEnv era ->
   ChainState era ->
