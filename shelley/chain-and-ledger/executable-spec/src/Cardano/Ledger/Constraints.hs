@@ -49,6 +49,7 @@ type UsesTxBody era =
     HashIndex (Core.TxBody era) ~ EraIndependentTxBody,
     HashAnnotated (Core.TxBody era) era,
     Eq (Core.TxBody era),
+    NoThunks (Core.TxBody era),
     Show (Core.TxBody era),
     FromCBOR (Annotator (Core.TxBody era)),
     ToCBOR (Core.TxBody era)
@@ -77,6 +78,7 @@ type UsesValue era =
 class
   ( Era era,
     Val (Core.Value era),
+    NoThunks (Core.Value era),
     Compactible (Core.Value era),
     Show (Core.Value era),
     Show (CompactForm (Core.Value era)),
@@ -98,6 +100,7 @@ type UsesTx era = (Era era, ToCBOR (Core.AuxiliaryData era))
 type UsesScript era =
   ( Era era,
     Eq (Core.Script era),
+    NoThunks (Core.Script era),
     Show (Core.Script era),
     ToCBOR (Core.Script era),
     FromCBOR (Annotator (Core.Script era))
@@ -105,6 +108,8 @@ type UsesScript era =
 
 type UsesAuxiliary era =
   ( Era era,
+    Eq (Core.AuxiliaryData era),
+    NoThunks (Core.AuxiliaryData era),
     Show (Core.AuxiliaryData era),
     ToCBOR (Core.AuxiliaryData era),
     FromCBOR (Annotator (Core.AuxiliaryData era))

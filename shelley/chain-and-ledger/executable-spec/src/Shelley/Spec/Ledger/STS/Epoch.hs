@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE EmptyDataDecls #-}
@@ -19,7 +20,8 @@ module Shelley.Spec.Ledger.STS.Epoch
 where
 
 import Cardano.Ledger.Constraints (UsesValue)
-import Cardano.Ledger.Era
+import qualified Cardano.Ledger.Core as Core
+import Cardano.Ledger.Era (Era (Crypto))
 import Control.Monad.Trans.Reader (asks)
 import Control.SetAlgebra (eval, (⨃))
 import Control.State.Transition (Embed (..), InitialRule, STS (..), TRC (..), TransitionRule, judgmentContext, liftSTS, trans)
@@ -28,9 +30,10 @@ import qualified Data.Map.Strict as Map
 import GHC.Generics (Generic)
 import NoThunks.Class (NoThunks (..))
 import Shelley.Spec.Ledger.BaseTypes (Globals (..), ShelleyBase)
-import Shelley.Spec.Ledger.EpochBoundary (emptySnapShots)
+import Shelley.Spec.Ledger.EpochBoundary (SnapShots, emptySnapShots)
 import Shelley.Spec.Ledger.LedgerState
   ( EpochState,
+    LedgerState,
     PPUPState (..),
     PState (..),
     emptyAccount,
@@ -49,9 +52,9 @@ import Shelley.Spec.Ledger.LedgerState
   )
 import Shelley.Spec.Ledger.PParams (PParams, PParamsUpdate, ProposedPPUpdates (..), emptyPParams, updatePParams)
 import Shelley.Spec.Ledger.Rewards (emptyNonMyopic)
-import Shelley.Spec.Ledger.STS.Newpp (NEWPP, NewppEnv (..), NewppState (..))
-import Shelley.Spec.Ledger.STS.PoolReap (POOLREAP, PoolreapState (..))
-import Shelley.Spec.Ledger.STS.Snap (SNAP)
+import Shelley.Spec.Ledger.STS.Newpp (NEWPP, NewppEnv (..), NewppPredicateFailure, NewppState (..))
+import Shelley.Spec.Ledger.STS.PoolReap (POOLREAP, PoolreapPredicateFailure, PoolreapState (..))
+import Shelley.Spec.Ledger.STS.Snap (SNAP, SnapPredicateFailure)
 import Shelley.Spec.Ledger.Slot (EpochNo)
 
 -- ================================================
@@ -59,20 +62,42 @@ import Shelley.Spec.Ledger.Slot (EpochNo)
 data EPOCH era
 
 data EpochPredicateFailure era
-  = PoolReapFailure (PredicateFailure (POOLREAP era)) -- Subtransition Failures
-  | SnapFailure (PredicateFailure (SNAP era)) -- Subtransition Failures
-  | NewPpFailure (PredicateFailure (NEWPP era)) -- Subtransition Failures
+  = PoolReapFailure (PredicateFailure (Core.EraRule "POOLREAP" era)) -- Subtransition Failures
+  | SnapFailure (PredicateFailure (Core.EraRule "SNAP" era)) -- Subtransition Failures
+  | NewPpFailure (PredicateFailure (Core.EraRule "NEWPP" era)) -- Subtransition Failures
   deriving (Generic)
 
 deriving stock instance
-  (Eq (PredicateFailure (SNAP era))) =>
+  ( Eq (PredicateFailure (Core.EraRule "POOLREAP" era)),
+    Eq (PredicateFailure (Core.EraRule "SNAP" era)),
+    Eq (PredicateFailure (Core.EraRule "NEWPP" era))
+  ) =>
   Eq (EpochPredicateFailure era)
 
 deriving stock instance
-  (Show (PredicateFailure (SNAP era))) =>
+  ( Show (PredicateFailure (Core.EraRule "POOLREAP" era)),
+    Show (PredicateFailure (Core.EraRule "SNAP" era)),
+    Show (PredicateFailure (Core.EraRule "NEWPP" era))
+  ) =>
   Show (EpochPredicateFailure era)
 
-instance UsesValue era => STS (EPOCH era) where
+instance
+  ( UsesValue era,
+    Embed (Core.EraRule "SNAP" era) (EPOCH era),
+    Environment (Core.EraRule "SNAP" era) ~ LedgerState era,
+    State (Core.EraRule "SNAP" era) ~ SnapShots (Crypto era),
+    Signal (Core.EraRule "SNAP" era) ~ (),
+    Embed (Core.EraRule "POOLREAP" era) (EPOCH era),
+    Environment (Core.EraRule "POOLREAP" era) ~ PParams era,
+    State (Core.EraRule "POOLREAP" era) ~ PoolreapState era,
+    Signal (Core.EraRule "POOLREAP" era) ~ EpochNo,
+    Embed (Core.EraRule "NEWPP" era) (EPOCH era),
+    Environment (Core.EraRule "NEWPP" era) ~ NewppEnv era,
+    State (Core.EraRule "NEWPP" era) ~ NewppState era,
+    Signal (Core.EraRule "NEWPP" era) ~ Maybe (PParams era)
+  ) =>
+  STS (EPOCH era)
+  where
   type State (EPOCH era) = EpochState era
   type Signal (EPOCH era) = EpochNo
   type Environment (EPOCH era) = ()
@@ -81,7 +106,12 @@ instance UsesValue era => STS (EPOCH era) where
   initialRules = [initialEpoch]
   transitionRules = [epochTransition]
 
-instance NoThunks (EpochPredicateFailure era)
+instance
+  ( NoThunks (PredicateFailure (Core.EraRule "POOLREAP" era)),
+    NoThunks (PredicateFailure (Core.EraRule "SNAP" era)),
+    NoThunks (PredicateFailure (Core.EraRule "NEWPP" era))
+  ) =>
+  NoThunks (EpochPredicateFailure era)
 
 initialEpoch :: InitialRule (EPOCH era)
 initialEpoch =
@@ -121,7 +151,20 @@ votedValue (ProposedPPUpdates pup) pps quorumN =
 
 epochTransition ::
   forall era.
-  UsesValue era =>
+  ( UsesValue era,
+    Embed (Core.EraRule "SNAP" era) (EPOCH era),
+    Environment (Core.EraRule "SNAP" era) ~ LedgerState era,
+    State (Core.EraRule "SNAP" era) ~ SnapShots (Crypto era),
+    Signal (Core.EraRule "SNAP" era) ~ (),
+    Embed (Core.EraRule "POOLREAP" era) (EPOCH era),
+    Environment (Core.EraRule "POOLREAP" era) ~ PParams era,
+    State (Core.EraRule "POOLREAP" era) ~ PoolreapState era,
+    Signal (Core.EraRule "POOLREAP" era) ~ EpochNo,
+    Embed (Core.EraRule "NEWPP" era) (EPOCH era),
+    Environment (Core.EraRule "NEWPP" era) ~ NewppEnv era,
+    State (Core.EraRule "NEWPP" era) ~ NewppState era,
+    Signal (Core.EraRule "NEWPP" era) ~ Maybe (PParams era)
+  ) =>
   TransitionRule (EPOCH era)
 epochTransition = do
   TRC
@@ -140,7 +183,7 @@ epochTransition = do
   let utxoSt = _utxoState ls
   let DPState dstate pstate = _delegationState ls
   ss' <-
-    trans @(SNAP era) $ TRC (ls, ss, ())
+    trans @(Core.EraRule "SNAP" era) $ TRC (ls, ss, ())
 
   let PState pParams fPParams _ = pstate
       ppp = eval (pParams ⨃ fPParams)
@@ -150,14 +193,14 @@ epochTransition = do
             _fPParams = Map.empty
           }
   PoolreapState utxoSt' acnt' dstate' pstate'' <-
-    trans @(POOLREAP era) $ TRC (pp, PoolreapState utxoSt acnt dstate pstate', e)
+    trans @(Core.EraRule "POOLREAP" era) $ TRC (pp, PoolreapState utxoSt acnt dstate pstate', e)
 
   coreNodeQuorum <- liftSTS $ asks quorum
 
   let pup = proposals . _ppups $ utxoSt'
   let ppNew = votedValue pup pp (fromIntegral coreNodeQuorum)
   NewppState utxoSt'' acnt'' pp' <-
-    trans @(NEWPP era) $
+    trans @(Core.EraRule "NEWPP" era) $
       TRC (NewppEnv dstate' pstate'', NewppState utxoSt' acnt' pp, ppNew)
   pure $
     EpochState
@@ -168,11 +211,26 @@ epochTransition = do
       pp'
       nm
 
-instance UsesValue era => Embed (SNAP era) (EPOCH era) where
+instance
+  ( UsesValue era,
+    PredicateFailure (Core.EraRule "SNAP" era) ~ SnapPredicateFailure era
+  ) =>
+  Embed (SNAP era) (EPOCH era)
+  where
   wrapFailed = SnapFailure
 
-instance Era era => Embed (POOLREAP era) (EPOCH era) where
+instance
+  ( Era era,
+    PredicateFailure (Core.EraRule "POOLREAP" era) ~ PoolreapPredicateFailure era
+  ) =>
+  Embed (POOLREAP era) (EPOCH era)
+  where
   wrapFailed = PoolReapFailure
 
-instance Era era => Embed (NEWPP era) (EPOCH era) where
+instance
+  ( Era era,
+    PredicateFailure (Core.EraRule "NEWPP" era) ~ NewppPredicateFailure era
+  ) =>
+  Embed (NEWPP era) (EPOCH era)
+  where
   wrapFailed = NewPpFailure
